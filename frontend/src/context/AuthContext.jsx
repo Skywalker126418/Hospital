@@ -72,6 +72,11 @@ export const AuthProvider = ({ children }) => {
     return roles.includes(user.role);
   };
 
+  const updateCurrentUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('hms_user', JSON.stringify(updatedUser));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -81,6 +86,7 @@ export const AuthProvider = ({ children }) => {
         register,
         googleLogin,
         logout,
+        updateCurrentUser,
         hasRole,
         isAuthenticated: !!user,
       }}

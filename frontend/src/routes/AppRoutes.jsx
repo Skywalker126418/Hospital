@@ -35,6 +35,10 @@ import Settings from '../pages/admin/Settings';
 import LowFidelityPrototype from '../pages/prototype/LowFidelityPrototype';
 import UsabilityEvaluation from '../pages/evaluation/UsabilityEvaluation';
 
+// Universal Staff Features (Chat & Profile)
+import ProfilePage from '../pages/profile/ProfilePage';
+import ChatPage from '../pages/chat/ChatPage';
+
 // Root redirector based on authenticated role
 const RootRedirector = () => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -111,7 +115,7 @@ const AppRoutes = () => {
         <Route path="settings" element={<Settings />} />
       </Route>
 
-      {/* Academic HCI Prototype & Usability Evaluation Routes */}
+      {/* Academic HCI Prototype & Universal Features */}
       <Route
         element={
           <ProtectedRoute>
@@ -119,6 +123,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       >
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/prototype" element={<LowFidelityPrototype />} />
         <Route path="/evaluation" element={<UsabilityEvaluation />} />
       </Route>

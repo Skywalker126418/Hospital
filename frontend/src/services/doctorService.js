@@ -12,4 +12,8 @@ export const doctorService = {
   getDoctorSlots: async (doctorId, date) => {
     return await api.get(`/doctors/${doctorId}/slots`, { params: { date } });
   },
+
+  updateDutyStatus: async (id, duty_status) => {
+    return await api.patch(`/doctors/${id}/duty-status`, { duty_status });
+  },
 };

@@ -47,6 +47,8 @@ const AppointmentBooking = () => {
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
 
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+
   // Load initial doctors & patient search suggestions
   useEffect(() => {
     const loadDoctors = async () => {
@@ -55,7 +57,8 @@ const AppointmentBooking = () => {
         const res = await doctorService.getDoctors();
         if (res.success) {
           setDoctors(res.data);
-          if (res.data.length > 0) setSelectedDoctor(res.data[0]);
+          const firstAvailable = res.data.find((d) => d.duty_status === 'available');
+          if (firstAvailable) setSelectedDoctor(firstAvailable);
         }
       } catch (err) {
         toastError('Failed to load available physicians.');
@@ -115,6 +118,14 @@ const AppointmentBooking = () => {
       toastError('Please select an attending doctor.');
       return;
     }
+    if (selectedDoctor.duty_status !== 'available') {
+      toastError(
+        `Doctor ${selectedDoctor.name} is currently ${
+          selectedDoctor.duty_status === 'attending' ? 'attending another patient' : 'off duty today'
+        }. Receptionists can only assign available doctors.`
+      );
+      return;
+    }
     if (!selectedDate) {
       toastError('Please select an appointment date.');
       return;
@@ -154,11 +165,16 @@ const AppointmentBooking = () => {
     }
   };
 
-  const filteredDoctors = doctors.filter((doc) =>
-    doc.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
-    doc.specialization.toLowerCase().includes(doctorSearch.toLowerCase()) ||
-    doc.department?.toLowerCase().includes(doctorSearch.toLowerCase())
-  );
+  const filteredDoctors = doctors.filter((doc) => {
+    const matchesSearch =
+      doc.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+      doc.specialization.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+      doc.department?.toLowerCase().includes(doctorSearch.toLowerCase());
+    const matchesSpecialty = selectedSpecialty
+      ? doc.specialization.toLowerCase().includes(selectedSpecialty.toLowerCase())
+      : true;
+    return matchesSearch && matchesSpecialty;
+  });
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -290,47 +306,126 @@ const AppointmentBooking = () => {
             )}
           </div>
 
-          {/* Step 2: Select Doctor */}
+          {/* Step 2: Sickness Triage & Choose Attending Physician */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">2</span>
-                <h3 className="text-base font-bold text-slate-900">Choose Attending Physician</h3>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Sickness Triage & Doctor Assignment</h3>
+                  <p className="text-xs text-slate-500">Understand the patient's condition and assign an available matching specialist.</p>
+                </div>
               </div>
               <input
                 type="text"
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
-                placeholder="Filter by doctor or specialty..."
-                className="text-xs py-1.5 px-3 bg-slate-50 border border-slate-200 rounded-lg w-48"
+                placeholder="Search physician..."
+                className="text-xs py-1.5 px-3 bg-slate-50 border border-slate-200 rounded-lg w-full sm:w-48"
               />
+            </div>
+
+            {/* Sickness / Specialty Triage Filter */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Patient Sickness Category / Specialist Required:
+              </label>
+              <select
+                value={selectedSpecialty}
+                onChange={(e) => {
+                  setSelectedSpecialty(e.target.value);
+                  setSelectedDoctor(null);
+                }}
+                className="w-full text-xs py-2 px-3 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 font-medium text-slate-800"
+              >
+                <option value="">All Specialties / General Roster</option>
+                <option value="General">General Medicine / Internal (Fever, Flu, Infections)</option>
+                <option value="Cardiology">Cardiology (Heart, Chest Pain, Blood Pressure)</option>
+                <option value="Pediatrics">Pediatrics (Child & Infant Health)</option>
+                <option value="Orthopedics">Orthopedics (Bones, Joints, Fractures & Spine)</option>
+                <option value="Dermatology">Dermatology (Skin Rash, Allergies, Eczema)</option>
+                <option value="Neurology">Neurology (Headaches, Nerves, Brain)</option>
+                <option value="ENT">ENT (Ear, Nose & Throat Infections)</option>
+                <option value="Gynecology">Gynecology & Obstetrics (Women's Health)</option>
+                <option value="Surgery">General Surgery (Surgical Evaluation)</option>
+              </select>
             </div>
 
             {loadingDoctors ? (
               <LoadingSpinner size="sm" text="Loading physicians..." />
+            ) : filteredDoctors.length === 0 ? (
+              <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                No doctors found matching the selected sickness specialization or search query.
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {filteredDoctors.map((doc) => {
+                  const isAvailable = doc.duty_status === 'available';
+                  const isAttending = doc.duty_status === 'attending';
+                  const isOffDuty = doc.duty_status === 'off_duty';
                   const isSelected = selectedDoctor?.id === doc.id;
+
+                  const handleSelectDoctor = () => {
+                    if (!isAvailable) {
+                      toastError(
+                        isAttending
+                          ? `Dr. ${doc.name} is currently attending another patient and cannot take new assignments.`
+                          : `Dr. ${doc.name} does not attend today and is unavailable.`
+                      );
+                      return;
+                    }
+                    setSelectedDoctor(doc);
+                  };
+
                   return (
                     <div
                       key={doc.id}
-                      onClick={() => setSelectedDoctor(doc)}
-                      className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                        isSelected
-                          ? 'border-brand-600 bg-brand-50/70 shadow-xs ring-1 ring-brand-500'
-                          : 'border-slate-200 hover:border-brand-300 hover:bg-slate-50'
+                      onClick={handleSelectDoctor}
+                      className={`p-4 rounded-xl border transition flex flex-col justify-between ${
+                        !isAvailable
+                          ? 'opacity-60 bg-slate-100/80 border-slate-200 cursor-not-allowed'
+                          : isSelected
+                          ? 'border-brand-600 bg-brand-50/70 shadow-xs ring-2 ring-brand-500 cursor-pointer'
+                          : 'border-slate-200 hover:border-brand-300 hover:bg-slate-50 cursor-pointer'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                        isSelected ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {doc.name.replace('Dr. ', '').charAt(0)}
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                            isSelected
+                              ? 'bg-brand-600 text-white'
+                              : isAvailable
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-200 text-slate-500'
+                          }`}
+                        >
+                          {doc.name.replace('Dr. ', '').charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-slate-900 text-xs truncate">{doc.name}</h4>
+                          <p className="text-[11px] text-brand-600 font-medium truncate">{doc.specialization}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{doc.department}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-slate-900 text-xs truncate">{doc.name}</h4>
-                        <p className="text-[11px] text-brand-600 font-medium">{doc.specialization}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{doc.department}</p>
+
+                      {/* Duty Status Badge */}
+                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500 font-medium">Duty Status:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                            isAvailable
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                              : isAttending
+                              ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                              : 'bg-rose-100 text-rose-700 border border-rose-300'
+                          }`}
+                        >
+                          {isAvailable
+                            ? '✓ Available'
+                            : isAttending
+                            ? '⏳ Attending'
+                            : '✕ Off Duty'}
+                        </span>
                       </div>
                     </div>
                   );

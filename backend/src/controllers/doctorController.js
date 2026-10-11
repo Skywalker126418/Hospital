@@ -1,17 +1,18 @@
 const db = require('../config/database');
 
 /**
- * Get all doctors with profile, department, and specialization
+ * Get all doctors with profile, department, specialization, and real-time duty status
  */
 const getDoctors = async (req, res, next) => {
   try {
-    const { department = '', specialization = '', search = '' } = req.query;
+    const { department = '', specialization = '', search = '', duty_status = '' } = req.query;
 
     let queryStr = `
       SELECT 
         d.id, d.user_id, u.name, u.email, u.profile_image,
         d.specialization, d.department, d.license_number, d.phone,
-        d.availability, d.status
+        d.availability, d.status,
+        COALESCE(d.duty_status, 'available') as duty_status
       FROM doctors d
       JOIN users u ON d.user_id = u.id
       WHERE u.status = 'active'
@@ -26,6 +27,11 @@ const getDoctors = async (req, res, next) => {
     if (specialization) {
       queryStr += ' AND d.specialization = ?';
       params.push(specialization);
+    }
+
+    if (duty_status) {
+      queryStr += ' AND d.duty_status = ?';
+      params.push(duty_status);
     }
 
     if (search.trim()) {
@@ -44,9 +50,7 @@ const getDoctors = async (req, res, next) => {
       if (typeof avail === 'string') {
         try {
           avail = JSON.parse(avail);
-        } catch (e) {
-          // keep as string
-        }
+        } catch (e) {}
       }
       return {
         ...doc,
@@ -64,7 +68,7 @@ const getDoctors = async (req, res, next) => {
 };
 
 /**
- * Get single doctor details
+ * Get single doctor details with active consultation count
  */
 const getDoctorById = async (req, res, next) => {
   try {
@@ -74,7 +78,7 @@ const getDoctorById = async (req, res, next) => {
       `SELECT 
         d.id, d.user_id, u.name, u.email, u.profile_image,
         d.specialization, d.department, d.license_number, d.phone,
-        d.availability, d.status, d.created_at
+        d.availability, d.status, COALESCE(d.duty_status, 'available') as duty_status, d.created_at
       FROM doctors d
       JOIN users u ON d.user_id = u.id
       WHERE d.id = ?`,
@@ -102,8 +106,44 @@ const getDoctorById = async (req, res, next) => {
 };
 
 /**
+ * Update doctor duty status (available, attending, off_duty)
+ */
+const updateDutyStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { duty_status } = req.body;
+
+    const validStatuses = ['available', 'attending', 'off_duty'];
+    if (!validStatuses.includes(duty_status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be available, attending, or off_duty.',
+      });
+    }
+
+    const [doc] = await db.query('SELECT id FROM doctors WHERE id = ? OR user_id = ?', [id, id]);
+    if (doc.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Doctor record not found.',
+      });
+    }
+
+    await db.query('UPDATE doctors SET duty_status = ? WHERE id = ?', [duty_status, doc[0].id]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Doctor status updated to ${duty_status}.`,
+      duty_status,
+      doctor_id: doc[0].id,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get available time slots for a doctor on a specific date
- * Standard operational slots: 08:30 to 16:30 in 30-min increments
  */
 const getDoctorSlots = async (req, res, next) => {
   try {
@@ -117,6 +157,10 @@ const getDoctorSlots = async (req, res, next) => {
       });
     }
 
+    // Check doctor's duty status
+    const [docRows] = await db.query('SELECT duty_status FROM doctors WHERE id = ?', [id]);
+    const dutyStatus = docRows.length > 0 ? docRows[0].duty_status : 'available';
+
     // Standard day slots
     const standardSlots = [
       '08:30:00', '09:00:00', '09:30:00', '10:00:00',
@@ -125,7 +169,23 @@ const getDoctorSlots = async (req, res, next) => {
       '15:30:00', '16:00:00'
     ];
 
-    // Fetch already booked appointments for this doctor on that date (not cancelled)
+    // If doctor is off_duty, no slots are available
+    if (dutyStatus === 'off_duty') {
+      return res.status(200).json({
+        success: true,
+        doctor_id: parseInt(id, 10),
+        date,
+        duty_status: dutyStatus,
+        slots: standardSlots.map((time) => ({
+          time: time.slice(0, 5),
+          rawTime: time,
+          isAvailable: false,
+          status: 'off_duty',
+        })),
+      });
+    }
+
+    // Fetch already booked appointments
     const [bookedRows] = await db.query(
       `SELECT appointment_time 
        FROM appointments 
@@ -136,7 +196,7 @@ const getDoctorSlots = async (req, res, next) => {
     const bookedTimes = new Set(bookedRows.map((r) => r.appointment_time));
 
     const slots = standardSlots.map((time) => ({
-      time: time.slice(0, 5), // HH:MM
+      time: time.slice(0, 5),
       rawTime: time,
       isAvailable: !bookedTimes.has(time),
       status: bookedTimes.has(time) ? 'booked' : 'available',
@@ -146,6 +206,7 @@ const getDoctorSlots = async (req, res, next) => {
       success: true,
       doctor_id: parseInt(id, 10),
       date,
+      duty_status: dutyStatus,
       slots,
     });
   } catch (error) {
@@ -156,5 +217,6 @@ const getDoctorSlots = async (req, res, next) => {
 module.exports = {
   getDoctors,
   getDoctorById,
+  updateDutyStatus,
   getDoctorSlots,
 };

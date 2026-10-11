@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const db = require('../config/database');
 const seedDatabase = require('../utils/seed');
 
@@ -9,7 +11,6 @@ const getSettings = async (req, res, next) => {
     const [rows] = await db.query('SELECT * FROM hospital_settings LIMIT 1');
 
     if (rows.length === 0) {
-      // Default fallback
       return res.status(200).json({
         success: true,
         data: {
@@ -76,13 +77,59 @@ const updateSettings = async (req, res, next) => {
 };
 
 /**
- * Clear all demo clinical records (Patients, Appointments, Consultations, Labs, Bills)
- * Gives user a completely clean slate while keeping accounts!
+ * Upload official hospital logo & delete old logo from storage
+ */
+const uploadLogo = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please select an image file to upload.' });
+    }
+
+    const [rows] = await db.query('SELECT id, logo_url FROM hospital_settings LIMIT 1');
+    const oldLogo = rows.length > 0 ? rows[0].logo_url : null;
+
+    // Delete old logo file from disk if stored under /uploads/logos/
+    if (oldLogo && oldLogo.startsWith('/uploads/logos/')) {
+      const oldFilePath = path.join(__dirname, '../../', oldLogo);
+      if (fs.existsSync(oldFilePath)) {
+        try {
+          fs.unlinkSync(oldFilePath);
+          console.log('[Logo] Deleted previous logo:', oldFilePath);
+        } catch (e) {
+          console.warn('[Logo] Could not delete old logo file:', e.message);
+        }
+      }
+    }
+
+    const newLogoUrl = `/uploads/logos/${req.file.filename}`;
+
+    if (rows.length === 0) {
+      await db.query('INSERT INTO hospital_settings (hospital_name, logo_url) VALUES (?, ?)', [
+        'Metropolitan Central Hospital',
+        newLogoUrl,
+      ]);
+    } else {
+      await db.query('UPDATE hospital_settings SET logo_url = ? WHERE id = ?', [newLogoUrl, rows[0].id]);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Hospital logo updated successfully.',
+      logoUrl: newLogoUrl,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Clear all demo clinical records
  */
 const clearAllDemoData = async (req, res, next) => {
   const conn = await db.pool.getConnection();
   try {
     await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+    await conn.query('TRUNCATE TABLE messages');
     await conn.query('TRUNCATE TABLE bill_items');
     await conn.query('TRUNCATE TABLE bills');
     await conn.query('TRUNCATE TABLE prescription_items');
@@ -96,7 +143,7 @@ const clearAllDemoData = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'All demo patients, appointments, consultations, and bills have been cleared. Hospital is now fresh and empty.',
+      message: 'All demo records cleared. System is now fresh and clean.',
     });
   } catch (error) {
     conn.release();
@@ -122,6 +169,7 @@ const reseedData = async (req, res, next) => {
 module.exports = {
   getSettings,
   updateSettings,
+  uploadLogo,
   clearAllDemoData,
   reseedData,
 };

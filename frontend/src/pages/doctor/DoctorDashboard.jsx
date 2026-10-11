@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { appointmentService } from '../../services/appointmentService';
 import { laboratoryService } from '../../services/laboratoryService';
+import { doctorService } from '../../services/doctorService';
 import { reportService } from '../../services/reportService';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -41,7 +42,25 @@ const DoctorDashboard = () => {
   const [anatomyLayer, setAnatomyLayer] = useState('all');
   const [selectedOrganInfo, setSelectedOrganInfo] = useState('Select any anatomical system or organ above to inspect clinical notes');
 
-  const { error } = useToast();
+  const { error, success } = useToast();
+  const [dutyStatus, setDutyStatus] = useState(user?.doctor?.duty_status || 'available');
+  const [updatingDuty, setUpdatingDuty] = useState(false);
+
+  const handleDutyStatusChange = async (newStatus) => {
+    try {
+      setUpdatingDuty(true);
+      const doctorId = user?.doctor?.doctor_id || user?.id;
+      const res = await doctorService.updateDutyStatus(doctorId, newStatus);
+      if (res.success) {
+        setDutyStatus(newStatus);
+        success(`Duty status updated to: ${newStatus.replace('_', ' ').toUpperCase()}`);
+      }
+    } catch (err) {
+      error(err.message || 'Failed to update duty status');
+    } finally {
+      setUpdatingDuty(false);
+    }
+  };
 
   useEffect(() => {
     const loadDoctorData = async () => {
@@ -103,6 +122,66 @@ const DoctorDashboard = () => {
           </div>
         }
       />
+
+      {/* Doctor Duty Status Bar (Affects Receptionist Triage Assignment) */}
+      <div className="bg-[#0a192f] border border-slate-700/70 rounded-2xl p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Clinical Duty Status:</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+              dutyStatus === 'available'
+                ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/50'
+                : dutyStatus === 'attending'
+                ? 'bg-amber-950 text-amber-400 border border-amber-500/50'
+                : 'bg-rose-950 text-rose-400 border border-rose-500/50'
+            }`}>
+              {dutyStatus === 'available' ? 'Available for Assignment' : dutyStatus === 'attending' ? 'Attending a Patient (Unavailable)' : 'Off Duty / Absent (Unavailable)'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Receptionists can only assign new patient consultations when your status is marked <strong className="text-emerald-300">Available</strong>.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={updatingDuty || dutyStatus === 'available'}
+            onClick={() => handleDutyStatusChange('available')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+              dutyStatus === 'available'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500 hover:text-white'
+            }`}
+          >
+            ✓ Available
+          </button>
+          <button
+            type="button"
+            disabled={updatingDuty || dutyStatus === 'attending'}
+            onClick={() => handleDutyStatusChange('attending')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+              dutyStatus === 'attending'
+                ? 'bg-amber-600 text-white border-amber-500 shadow-md'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-amber-500 hover:text-white'
+            }`}
+          >
+            ⏳ Attending Patient
+          </button>
+          <button
+            type="button"
+            disabled={updatingDuty || dutyStatus === 'off_duty'}
+            onClick={() => handleDutyStatusChange('off_duty')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+              dutyStatus === 'off_duty'
+                ? 'bg-rose-700 text-white border-rose-600 shadow-md'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-500 hover:text-white'
+            }`}
+          >
+            ✕ Off Duty Today
+          </button>
+        </div>
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -225,7 +304,7 @@ const DoctorDashboard = () => {
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <div>
-                <h3 className="text-base font-bold text-slate-900">3D Anatomical Inspector</h3>
+                <h3 className="text-base font-bold text-slate-900">Anatomical System Inspector</h3>
                 <p className="text-xs text-slate-500">Interactive patient physiological reference</p>
               </div>
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-[11px]">
@@ -253,11 +332,11 @@ const DoctorDashboard = () => {
               </div>
             </div>
 
-            {/* 3D Anatomical Viewer */}
+            {/* Interactive Anatomical Viewer */}
             <div className="w-full h-72 rounded-xl overflow-hidden mb-3">
               <MedicalObjectViewer
                 title="Human Biological Architecture"
-                badge="3D Mesh Active"
+                badge="Interactive Mesh"
                 height="h-full"
               >
                 <HumanBodyModel

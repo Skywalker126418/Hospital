@@ -31,12 +31,12 @@ export class Model3DErrorBoundary extends Component {
           <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-brand-400 mb-3 border border-slate-700">
             <Box className="w-6 h-6" />
           </div>
-          <h4 className="text-sm font-semibold text-white">3D Medical Visualization Unavailable</h4>
+          <h4 className="text-sm font-semibold text-white">Medical Visualization Unavailable</h4>
           <p className="text-xs text-slate-400 max-w-xs mt-1 mb-4">
             WebGL acceleration is restricted on this client device. Fallback diagrammatic inspection mode is active.
           </p>
           <Button variant="outline" size="sm" onClick={this.handleRetry} icon={RefreshCw} className="border-slate-700 text-slate-300 hover:bg-slate-800">
-            Retry 3D Render
+            Retry Render
           </Button>
         </div>
       );
@@ -46,9 +46,9 @@ export class Model3DErrorBoundary extends Component {
 }
 
 /**
- * 3D Suspense Canvas Loading Placeholder
+ * Suspense Canvas Loading Placeholder
  */
-export const ModelLoadingPlaceholder = ({ message = 'Loading 3D Medical Model...' }) => (
+export const ModelLoadingPlaceholder = ({ message = 'Loading Medical Model...' }) => (
   <div className="w-full h-full min-h-[280px] flex flex-col items-center justify-center bg-slate-950/60 rounded-2xl text-slate-300 gap-3 border border-slate-800">
     <Loader2 className="w-8 h-8 animate-spin text-brand-400" />
     <span className="text-xs font-medium tracking-wide text-slate-400">{message}</span>

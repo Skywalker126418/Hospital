@@ -6,8 +6,8 @@ import { Model3DErrorBoundary, ModelLoadingPlaceholder } from './ModelLoader';
 
 const MedicalObjectViewer = ({
   children,
-  title = 'Interactive 3D Medical Visualizer',
-  badge = 'Interactive 3D/4D',
+  title = 'Interactive Medical Visualizer',
+  badge = 'Interactive Visualizer',
   height = 'h-80 md:h-96',
   allowWireframe = false,
   onReset,
@@ -55,7 +55,6 @@ const MedicalObjectViewer = ({
       {/* Top Header Overlay */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-slate-950/80 to-transparent pointer-events-none">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
           <span className="text-xs font-semibold text-white tracking-wide">{title}</span>
           <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
             {badge}

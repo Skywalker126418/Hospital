@@ -120,7 +120,7 @@ const login = async (req, res, next) => {
     let doctorInfo = null;
     if (user.role === 'doctor') {
       const [doctorRows] = await db.query(
-        'SELECT id as doctor_id, specialization, department, license_number FROM doctors WHERE user_id = ?',
+        "SELECT id as doctor_id, specialization, department, license_number, COALESCE(duty_status, 'available') as duty_status FROM doctors WHERE user_id = ?",
         [user.id]
       );
       if (doctorRows.length > 0) {
@@ -172,7 +172,7 @@ const getMe = async (req, res, next) => {
 
     if (user.role === 'doctor') {
       const [doctorRows] = await db.query(
-        'SELECT id as doctor_id, specialization, department, license_number, phone, availability FROM doctors WHERE user_id = ?',
+        "SELECT id as doctor_id, specialization, department, license_number, phone, availability, COALESCE(duty_status, 'available') as duty_status FROM doctors WHERE user_id = ?",
         [user.id]
       );
       if (doctorRows.length > 0) {

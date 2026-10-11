@@ -9,7 +9,10 @@ import {
   Save,
   CheckCircle2,
   ShieldCheck,
-  Globe
+  Globe,
+  Upload,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { settingsService } from '../../services/settingsService';
 import { useToast } from '../../context/ToastContext';
@@ -30,6 +33,8 @@ const Settings = () => {
   });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = React.useRef(null);
 
   const { success, error: toastError } = useToast();
 
@@ -55,6 +60,33 @@ const Settings = () => {
     setSettings((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toastError('Please select a valid image file (PNG, JPG, SVG, WEBP).');
+      return;
+    }
+
+    setUploadingLogo(true);
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      const res = await settingsService.uploadLogo(formData);
+      if (res.success && res.data) {
+        setSettings((prev) => ({ ...prev, logo_url: res.data.logo_url }));
+        success('✓ Hospital logo updated successfully. Old logo removed from storage.');
+      }
+    } catch (err) {
+      toastError(err.response?.data?.message || err.message || 'Failed to upload hospital logo.');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -70,12 +102,65 @@ const Settings = () => {
 
   if (loading) return <LoadingSpinner size="lg" text="Loading hospital configuration..." />;
 
+  const logoDisplayUrl = settings.logo_url
+    ? settings.logo_url.startsWith('http')
+      ? settings.logo_url
+      : `http://localhost:5000${settings.logo_url.startsWith('/') ? '' : '/'}${settings.logo_url}`
+    : null;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <PageHeader
         title="Hospital System Configuration"
-        subtitle="Global clinical institution metadata, default currency, appointment durations, and security preferences."
+        subtitle="Global clinical institution metadata, hospital branding logo, currency, and operational preferences."
       />
+
+      {/* Hospital Logo & Brand Section */}
+      <div className="bg-[#0a192f] text-white rounded-3xl border border-slate-700/60 p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-5">
+          <div className="w-20 h-20 rounded-2xl bg-slate-800 border-2 border-emerald-500/40 p-2 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-lg">
+            {logoDisplayUrl ? (
+              <img
+                src={logoDisplayUrl}
+                alt="Hospital Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/logo.svg';
+                }}
+              />
+            ) : (
+              <Building className="w-10 h-10 text-emerald-400" />
+            )}
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Official Institution Logo</h3>
+            <p className="text-xs text-slate-300 mt-1 max-w-md">
+              Upload the hospital's official emblem. When replaced, previous logo files are permanently deleted from local disk storage.
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleLogoUpload}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="success"
+            icon={uploadingLogo ? Loader2 : Upload}
+            isLoading={uploadingLogo}
+            onClick={() => logoInputRef.current?.click()}
+            className="font-bold whitespace-nowrap"
+          >
+            {uploadingLogo ? 'Updating Logo...' : 'Upload New Logo'}
+          </Button>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-10 space-y-8">
         {/* Institutional Identification */}

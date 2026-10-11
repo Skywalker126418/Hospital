@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
 const config = require('./config/environment');
 const { testConnection } = require('./config/database');
 const { notFoundHandler, errorHandler } = require('./middleware/errorMiddleware');
@@ -17,8 +18,12 @@ const laboratoryRoutes = require('./routes/laboratoryRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
+
+// Serve uploaded profile photos & logos statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Middleware
 app.use(cors({
@@ -57,6 +62,7 @@ app.use('/api/laboratory', laboratoryRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Error Handling
 app.use(notFoundHandler);

@@ -9,8 +9,8 @@ const PageHeader = ({ title, subtitle, actions, breadcrumbs }) => {
             {breadcrumbs}
           </div>
         )}
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
+        {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {actions && (
         <div className="flex items-center gap-3 flex-wrap">

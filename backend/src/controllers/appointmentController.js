@@ -82,6 +82,7 @@ const getAppointments = async (req, res, next) => {
         p.date_of_birth as patient_dob,
         u.name as doctor_name, d.specialization as doctor_specialization,
         d.department as doctor_department,
+        COALESCE(d.duty_status, 'available') as doctor_duty_status,
         c.id as consultation_id
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
@@ -128,6 +129,7 @@ const getAppointmentById = async (req, res, next) => {
         p.blood_group, p.allergies,
         u.name as doctor_name, d.specialization as doctor_specialization,
         d.department as doctor_department,
+        COALESCE(d.duty_status, 'available') as doctor_duty_status,
         c.id as consultation_id, c.diagnosis, c.treatment
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
@@ -152,7 +154,8 @@ const getAppointmentById = async (req, res, next) => {
 };
 
 /**
- * Create new appointment with strict double-booking prevention
+ * Create new appointment: Receptionist assigns patient to doctor.
+ * Validates doctor availability and sets doctor status to 'attending' if patient is assigned for immediate arrival.
  */
 const createAppointment = async (req, res, next) => {
   const conn = await db.pool.getConnection();
@@ -168,9 +171,9 @@ const createAppointment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Selected patient does not exist.' });
     }
 
-    // Verify doctor exists
+    // Verify doctor exists & check attendance/duty_status
     const [doctor] = await conn.query(
-      'SELECT d.id, u.name FROM doctors d JOIN users u ON d.user_id = u.id WHERE d.id = ?',
+      'SELECT d.id, u.name, d.specialization, COALESCE(d.duty_status, "available") as duty_status FROM doctors d JOIN users u ON d.user_id = u.id WHERE d.id = ?',
       [doctor_id]
     );
     if (doctor.length === 0) {
@@ -178,10 +181,18 @@ const createAppointment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Selected doctor does not exist.' });
     }
 
+    if (doctor[0].duty_status === 'off_duty') {
+      await conn.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Doctor ${doctor[0].name} is off duty today and cannot accept new patients. Please assign to an available specialist.`,
+      });
+    }
+
     // Format appointment_time if without seconds
     const timeFormatted = appointment_time.length === 5 ? `${appointment_time}:00` : appointment_time;
 
-    // Check if slot is already occupied for this doctor
+    // Check if slot is already occupied
     const [conflict] = await conn.query(
       `SELECT id FROM appointments 
        WHERE doctor_id = ? AND appointment_date = ? AND appointment_time = ? AND status != 'cancelled'
@@ -204,6 +215,12 @@ const createAppointment = async (req, res, next) => {
       [patient_id, doctor_id, appointment_date, timeFormatted, reason, notes || null]
     );
 
+    // If appointment is for today, mark doctor duty status as 'attending'
+    const today = new Date().toISOString().slice(0, 10);
+    if (appointment_date === today) {
+      await conn.query('UPDATE doctors SET duty_status = "attending" WHERE id = ?', [doctor_id]);
+    }
+
     await conn.commit();
 
     return res.status(201).json({
@@ -213,6 +230,7 @@ const createAppointment = async (req, res, next) => {
         id: result.insertId,
         patient_name: `${patient[0].first_name} ${patient[0].last_name}`,
         doctor_name: doctor[0].name,
+        specialization: doctor[0].specialization,
         date: appointment_date,
         time: timeFormatted.slice(0, 5),
         status: 'scheduled',
@@ -227,7 +245,7 @@ const createAppointment = async (req, res, next) => {
 };
 
 /**
- * Update appointment status (scheduled, confirmed, completed, cancelled, no_show)
+ * Update appointment status. When marked completed, release doctor back to 'available'
  */
 const updateAppointmentStatus = async (req, res, next) => {
   try {
@@ -239,7 +257,7 @@ const updateAppointmentStatus = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid status value.' });
     }
 
-    const [existing] = await db.query('SELECT id, status FROM appointments WHERE id = ?', [id]);
+    const [existing] = await db.query('SELECT id, doctor_id, status FROM appointments WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Appointment not found.' });
     }
@@ -248,6 +266,18 @@ const updateAppointmentStatus = async (req, res, next) => {
       'UPDATE appointments SET status = ?, notes = COALESCE(?, notes) WHERE id = ?',
       [status, notes || null, id]
     );
+
+    // When consultation is completed or cancelled, check if doctor has any remaining active visits today
+    if (status === 'completed' || status === 'cancelled') {
+      const today = new Date().toISOString().slice(0, 10);
+      const [remaining] = await db.query(
+        'SELECT id FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND status IN ("scheduled", "confirmed")',
+        [existing[0].doctor_id, today]
+      );
+      if (remaining.length === 0) {
+        await db.query('UPDATE doctors SET duty_status = "available" WHERE id = ?', [existing[0].doctor_id]);
+      }
+    }
 
     return res.status(200).json({
       success: true,

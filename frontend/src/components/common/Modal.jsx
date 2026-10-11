@@ -31,18 +31,18 @@ const Modal = ({
 
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
         <div
-          className={`relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 w-full ${maxWidth} border border-slate-100`}
+          className={`relative transform overflow-hidden rounded-2xl bg-white dark:bg-[#0a192f] text-left shadow-2xl transition-all sm:my-8 w-full ${maxWidth} border border-slate-100 dark:border-slate-800`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
+          <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-              {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
+              {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
             </div>
             <button
               type="button"
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition"
               onClick={onClose}
             >
               <X className="w-5 h-5" />

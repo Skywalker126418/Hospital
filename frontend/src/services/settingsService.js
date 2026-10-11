@@ -8,4 +8,10 @@ export const settingsService = {
   updateSettings: async (settingsData) => {
     return await api.put('/settings', settingsData);
   },
+
+  uploadLogo: async (formData) => {
+    return await api.post('/settings/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };

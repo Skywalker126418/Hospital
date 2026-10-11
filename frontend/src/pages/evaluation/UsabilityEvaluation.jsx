@@ -10,7 +10,8 @@ import {
   Sparkles,
   Award,
   Layers,
-  FileCheck
+  FileCheck,
+  Users
 } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader';
 import Button from '../../components/common/Button';
@@ -36,7 +37,7 @@ const UsabilityEvaluation = () => {
       task: 'Booking Appointment Without Overlapping Doctor Schedules',
       problem: 'Users previously had to manually verify a paper calendar or cross-reference multiple screens to determine if a doctor was already occupied at a selected hour, leading to accidental double bookings.',
       principle: 'Minimal User Effort & Error Prevention (Nielsen #5, #6)',
-      improvement: 'Integrated real-time database slot availability calculation with color-coded interactive grid (Available=White, Selected=Blue, Unavailable=Strikethrough Gray), combined with MySQL transactional locking that prevents concurrent slot assignment.',
+      improvement: 'Integrated real-time database slot availability calculation with color-coded interactive grid (Available=White, Selected=Green, Unavailable=Strikethrough Gray), combined with MySQL transactional locking that prevents concurrent slot assignment.',
       status: 'Resolved in Final Architecture',
     },
     {
@@ -63,10 +64,10 @@ const UsabilityEvaluation = () => {
       id: 5,
       user: 'Administrator (Executive Staff)',
       role: 'admin',
-      task: 'Reconciling Outstanding Invoices & Generating Printable Accounts Statements',
-      problem: 'Administrative reports lacked standardized print formatting, resulting in misaligned table headers, cut-off balances, and extraneous navigation elements appearing on printed invoices.',
-      principle: 'Consistency and Standards (Nielsen #4)',
-      improvement: 'Implemented dedicated `@media print` CSS utility stylesheets that suppress sidebars and buttons, reformatted the official hospital letterhead, and established an invoice print modal with automatic totals and line item breakdowns.',
+      task: 'Centralized Staff Provisioning & Portal Security',
+      problem: 'Allowing unauthenticated users to create accounts without oversight compromised hospital clinical data integrity.',
+      principle: 'Error Prevention & Administrative Oversight (Nielsen #5)',
+      improvement: 'Enforced Admin-only clearance gate protected by dual authentication (Security PIN 12345678 or Master Password admin12). Administrator directly creates staff accounts and distributes passwords.',
       status: 'Resolved in Final Architecture',
     },
     {
@@ -86,7 +87,7 @@ const UsabilityEvaluation = () => {
     : evaluationCases.filter((c) => c.role === filterRole || c.role === 'all');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       <PageHeader
         title="HCI Academic Artifact: Usability Evaluation Audit"
         subtitle="Formal usability inspection across Receptionist, Doctor, and Administrator workflows adhering to Jakob Nielsen's Heuristics."
@@ -97,10 +98,10 @@ const UsabilityEvaluation = () => {
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evaluated Personas</p>
-            <h3 className="text-xl font-bold text-slate-900 mt-1">3 Primary Roles</h3>
-            <p className="text-xs text-brand-600 mt-0.5">Receptionist • Doctor • Admin</p>
+            <h3 className="text-xl font-bold text-[#0a192f] mt-1">3 Primary Roles</h3>
+            <p className="text-xs text-[#064e3b] font-semibold mt-0.5">Receptionist • Doctor • Admin</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-[#ecfdf5] text-[#064e3b] flex items-center justify-center">
             <Users className="w-6 h-6" />
           </div>
         </div>
@@ -108,8 +109,8 @@ const UsabilityEvaluation = () => {
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Documented Issues</p>
-            <h3 className="text-xl font-bold text-slate-900 mt-1">6 Audited Flaws</h3>
-            <p className="text-xs text-emerald-600 mt-0.5 font-medium">100% Resolved & Engineered</p>
+            <h3 className="text-xl font-bold text-[#0a192f] mt-1">6 Audited Flaws</h3>
+            <p className="text-xs text-emerald-600 mt-0.5 font-bold">100% Resolved & Engineered</p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <CheckCircle2 className="w-6 h-6" />
@@ -119,10 +120,10 @@ const UsabilityEvaluation = () => {
         <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Heuristic Standards</p>
-            <h3 className="text-xl font-bold text-slate-900 mt-1">Nielsen 10 Rules</h3>
-            <p className="text-xs text-purple-600 mt-0.5 font-medium">HCI & Cognitive Ergonomics</p>
+            <h3 className="text-xl font-bold text-[#0a192f] mt-1">Nielsen 10 Rules</h3>
+            <p className="text-xs text-[#0a192f] mt-0.5 font-semibold">HCI & Cognitive Ergonomics</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0a192f] flex items-center justify-center">
             <Award className="w-6 h-6" />
           </div>
         </div>
@@ -132,9 +133,9 @@ const UsabilityEvaluation = () => {
       <div className="flex items-center gap-2 p-1.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs w-fit">
         <button
           onClick={() => setFilterRole('all')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
             filterRole === 'all'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-[#0a192f] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -142,9 +143,9 @@ const UsabilityEvaluation = () => {
         </button>
         <button
           onClick={() => setFilterRole('receptionist')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
             filterRole === 'receptionist'
-              ? 'bg-brand-600 text-white shadow-xs'
+              ? 'bg-[#064e3b] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -152,9 +153,9 @@ const UsabilityEvaluation = () => {
         </button>
         <button
           onClick={() => setFilterRole('doctor')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
             filterRole === 'doctor'
-              ? 'bg-brand-600 text-white shadow-xs'
+              ? 'bg-[#064e3b] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -162,9 +163,9 @@ const UsabilityEvaluation = () => {
         </button>
         <button
           onClick={() => setFilterRole('admin')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
             filterRole === 'admin'
-              ? 'bg-brand-600 text-white shadow-xs'
+              ? 'bg-[#064e3b] text-white shadow-xs'
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -172,25 +173,25 @@ const UsabilityEvaluation = () => {
         </button>
       </div>
 
-      {/* Usability Issues Cards (Rule 58 Schema) */}
+      {/* Usability Issues Cards */}
       <div className="space-y-4">
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-4 transition hover:shadow-md"
+            className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
+                <span className="w-7 h-7 rounded-xl bg-[#0a192f] text-white text-xs font-bold flex items-center justify-center">
                   #{item.id}
                 </span>
-                <span className="font-bold text-slate-900 text-sm">{item.task}</span>
+                <span className="font-bold text-[#0a192f] text-sm">{item.task}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200">
                   User: {item.user}
                 </span>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-300">
                   {item.status}
                 </span>
               </div>
